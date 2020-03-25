@@ -25,14 +25,48 @@
 #include <linux/rtc.h>
 #include <linux/timer.h>
 #include <linux/kernel.h>
-#include <linux/klapse.h>
 
 #include "fliker_free.h"
 #include "mdss_fb.h"
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
+#include <mach/mmi_panel_notifier.h>
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#elif defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
 
+#include "mdss_mdp.h"
 
 struct mdss_panel_data *pdata;
+struct mdss_mdp_ctl *fb0_ctl = 0;
+u32 copyback = 0;
+static bool enabled;
 static bool mdss_backlight_enable = false;
+
+static void fliker_free_push_pcc(int r, int g, int b)
+{
+	struct mdp_pcc_cfg_data pcc_config;
+	struct mdp_pcc_data_v1_7 *payload;
+	memset(&pcc_config, 0, sizeof(struct mdp_pcc_cfg_data));
+	pcc_config.version = mdp_pcc_v1_7;
+	pcc_config.block = MDP_LOGICAL_BLOCK_DISP_0;
+	pcc_config.ops = enabled ?
+		MDP_PP_OPS_WRITE | MDP_PP_OPS_ENABLE :
+			MDP_PP_OPS_WRITE | MDP_PP_OPS_DISABLE;
+	payload = kzalloc(sizeof(struct mdp_pcc_data_v1_7),GFP_USER);
+	pcc_config.r.r = r;
+	pcc_config.g.g = g;
+	pcc_config.b.b = b;
+	payload->r.r = pcc_config.r.r;
+	payload->g.g = pcc_config.g.g;
+	payload->b.b = pcc_config.b.b;
+	pcc_config.cfg_payload = payload;
+	
+	mdss_mdp_pcc_config(get_mfd_copy(), &pcc_config, &copyback);
+	kfree(payload);
+}
 
 
 static void set_rgb_brightness(int r,int g,int b)
@@ -40,8 +74,12 @@ static void set_rgb_brightness(int r,int g,int b)
 	r = clamp_t(int, r, MIN_SCALE, MAX_SCALE);
 	g = clamp_t(int, g, MIN_SCALE, MAX_SCALE);
 	b = clamp_t(int, b, MIN_SCALE, MAX_SCALE);
-
+	
+	#if FLIKER_FREE_KLAPSE
 	klapse_kcal_push(r,g,b);
+	#else 
+	fliker_free_push_pcc(r,g,b);
+	#endif
 }
 
 static void set_brightness(int backlight)
