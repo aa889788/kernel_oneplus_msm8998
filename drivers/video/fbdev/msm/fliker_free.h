@@ -52,4 +52,8 @@ int get_elvss_off_threshold(void);
 /* get the current fliker free status (enabled or disabled) */
 bool if_fliker_free_enabled(void);
 
+bool get_useaod(void);
+
+void set_useaod(bool aod);
+
 #endif  /* _FLIKER_FREE_H */

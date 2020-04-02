@@ -2010,10 +2010,10 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			if (mfd->bl_level != bkl_lvl)
 				bl_notify_needed = true;
 		#ifdef CONFIG_FLIKER_FREE
-			pr_debug("backlight sent to panel :%d\n", mdss_panel_calc_backlight(temp));
-			pdata->set_backlight(pdata, mdss_panel_calc_backlight(temp));
 			ff_mfd_copy = mfd;
 			ff_bkl_lvl_cpy = temp;
+			pr_debug("backlight sent to panel :%d\n", mdss_panel_calc_backlight(temp));
+			pdata->set_backlight(pdata, mdss_panel_calc_backlight(temp));
 		#else
 			pr_debug("backlight sent to panel :%d\n", temp);
 			pdata->set_backlight(pdata, temp);
@@ -2062,7 +2062,14 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 				mdss_fb_bl_update_notify(mfd,
 					NOTIFY_TYPE_BL_AD_ATTEN_UPDATE);
 			mdss_fb_bl_update_notify(mfd, NOTIFY_TYPE_BL_UPDATE);
+			#ifdef CONFIG_FLIKER_FREE
+			if(!get_useaod())
+				pdata->set_backlight(pdata, mdss_panel_calc_backlight(temp));
+			else
+				pdata->set_backlight(pdata, temp);
+			#else
 			pdata->set_backlight(pdata, temp);
+			#endif
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->allow_bl_update = true;
 		}
